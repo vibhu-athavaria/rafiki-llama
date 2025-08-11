@@ -1,19 +1,46 @@
-from transformers import AutoModelForCausalLM, AutoTokenizer
+import torch
+from transformers import AutoTokenizer, AutoModelForCausalLM
 from peft import PeftModel
 
-base_model = "meta-llama/Llama-3-8b-hf"
-lora_dir = "./lora-rafiki"
+MODEL_PATH = "outputs/rafiki-llama-lora"
 
-# Load tokenizer and model with LoRA
-tokenizer = AutoTokenizer.from_pretrained(base_model)
-model = AutoModelForCausalLM.from_pretrained(base_model, device_map="auto", load_in_4bit=True)
-model = PeftModel.from_pretrained(model, lora_dir)
+def load_model(model_path=MODEL_PATH):
+    print("🔄 Loading tokenizer...")
+    tokenizer = AutoTokenizer.from_pretrained(model_path)
 
-# Chat function
-def chat(prompt):
-    inputs = tokenizer(prompt, return_tensors="pt").to("cuda")
-    output = model.generate(**inputs, max_new_tokens=150)
-    print(tokenizer.decode(output[0], skip_special_tokens=True))
+    print("🔄 Loading base model...")
+    base_model = AutoModelForCausalLM.from_pretrained(
+        "meta-llama/Meta-Llama-3-8B-Instruct",
+        device_map="auto",
+        torch_dtype=torch.float16
+    )
 
-# Example
-chat("Motivate me to go for a run today.")
+    print("🔄 Applying LoRA weights...")
+    model = PeftModel.from_pretrained(base_model, model_path)
+
+    model.eval()
+    return tokenizer, model
+
+def chat(model, tokenizer, prompt, max_new_tokens=256, temperature=0.7):
+    inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
+    with torch.no_grad():
+        outputs = model.generate(
+            **inputs,
+            max_new_tokens=max_new_tokens,
+            temperature=temperature,
+            do_sample=True,
+            pad_token_id=tokenizer.eos_token_id
+        )
+    return tokenizer.decode(outputs[0], skip_special_tokens=True)
+
+if __name__ == "__main__":
+    tokenizer, model = load_model()
+
+    print("💬 Rafiki-LLaMA is ready. Type 'exit' to quit.\n")
+    while True:
+        user_input = input("You: ")
+        if user_input.lower() in ["exit", "quit"]:
+            break
+        prompt = f"Instruction: {user_input}\nResponse:"
+        response = chat(model, tokenizer, prompt)
+        print(f"Rafiki: {response}\n")
