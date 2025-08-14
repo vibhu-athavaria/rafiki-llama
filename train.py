@@ -94,7 +94,7 @@ def main():
         save_steps=1000,
         fp16=False,
         bf16=True,
-        evaluation_strategy="no",
+        eval_strategy="epoch",
         gradient_checkpointing=True
     )
 
