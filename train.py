@@ -1,7 +1,12 @@
+import os
 import argparse
 from datasets import load_dataset
 from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments, Trainer
 from peft import LoraConfig, get_peft_model
+
+# --- TEMP DIR FIX for RunPod ---
+os.environ["TMPDIR"] = "/tmp"
+os.environ["HF_HOME"] = "/tmp"  # optional, to avoid writing cache to /root
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -19,10 +24,10 @@ def main():
     # Load dataset
     dataset = load_dataset("json", data_files=args.dataset, split="train")
 
-    # Load tokenizer and model
+    # Load tokenizer
     tokenizer = AutoTokenizer.from_pretrained(args.model)
     tokenizer.pad_token = tokenizer.eos_token
-    max_length = min(tokenizer.model_max_length, 512)  # cap at 512 if model supports more
+    max_length = min(tokenizer.model_max_length, 512)
 
     def tokenize_fn(example):
         prompt = f"Instruction: {example['instruction']}\nResponse: {example['output']}"
@@ -32,10 +37,19 @@ def main():
             padding="max_length",
             max_length=max_length
         )
+        # Ensure all sequences match max_length to avoid ArrowInvalid errors
+        for k in tokens:
+            if len(tokens[k]) != max_length:
+                tokens[k] = tokens[k][:max_length] + [tokenizer.pad_token_id] * (max_length - len(tokens[k]))
         return tokens
 
-    tokenized_dataset = dataset.map(tokenize_fn, batched=True, remove_columns=dataset.column_names)
+    tokenized_dataset = dataset.map(
+        tokenize_fn,
+        batched=True,
+        remove_columns=dataset.column_names
+    )
 
+    # Load model
     model = AutoModelForCausalLM.from_pretrained(
         args.model,
         device_map="auto",
