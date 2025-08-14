@@ -37,17 +37,10 @@ def main():
             padding="max_length",
             max_length=max_length
         )
-        # Ensure all sequences match max_length to avoid ArrowInvalid errors
-        for k in tokens:
-            if len(tokens[k]) != max_length:
-                tokens[k] = tokens[k][:max_length] + [tokenizer.pad_token_id] * (max_length - len(tokens[k]))
+        tokens["labels"] = tokens["input_ids"].copy()
         return tokens
 
-    tokenized_dataset = dataset.map(
-        tokenize_fn,
-        batched=True,
-        remove_columns=dataset.column_names
-    )
+    tokenized_dataset = dataset.map(tokenize_fn, batched=True, remove_columns=dataset.column_names)
 
     # Load model
     model = AutoModelForCausalLM.from_pretrained(
