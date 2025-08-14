@@ -37,10 +37,14 @@ def main():
         tokenizer.pad_token = tokenizer.eos_token
     max_length = min(tokenizer.model_max_length, 512)
 
-    def tokenize_fn(example):
-        prompt = f"Instruction: {example['instruction']}\nResponse: {example['output']}"
+    # --- Tokenization function for batched=True ---
+    def tokenize_fn(batch):
+        prompts = [
+            f"Instruction: {instr}\nResponse: {out}"
+            for instr, out in zip(batch["instruction"], batch["output"])
+        ]
         tokens = tokenizer(
-            prompt,
+            prompts,
             truncation=True,
             padding="max_length",
             max_length=max_length
@@ -94,7 +98,7 @@ def main():
         save_steps=1000,
         fp16=False,
         bf16=True,
-        eval_strategy="epoch",
+        eval_strategy="no",  # No evaluation
         gradient_checkpointing=True
     )
 
