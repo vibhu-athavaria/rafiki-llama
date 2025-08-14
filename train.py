@@ -76,9 +76,10 @@ def main():
         learning_rate=args.lr,
         logging_dir="./logs",
         logging_steps=50,
-        save_strategy="epoch",
+        save_strategy="steps",
+        save_steps=1000,
         fp16=True,
-        evaluation_strategy="no"
+        eval_strategy="no"
     )
 
     trainer = Trainer(
