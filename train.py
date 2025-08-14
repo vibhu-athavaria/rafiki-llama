@@ -22,12 +22,19 @@ def main():
     # Load tokenizer and model
     tokenizer = AutoTokenizer.from_pretrained(args.model)
     tokenizer.pad_token = tokenizer.eos_token
+    max_length = min(tokenizer.model_max_length, 512)  # cap at 512 if model supports more
 
     def tokenize_fn(example):
         prompt = f"Instruction: {example['instruction']}\nResponse: {example['output']}"
-        return tokenizer(prompt, truncation=True, padding="max_length", max_length=512)
+        tokens = tokenizer(
+            prompt,
+            truncation=True,
+            padding="max_length",
+            max_length=max_length
+        )
+        return tokens
 
-    tokenized_dataset = dataset.map(tokenize_fn, batched=True)
+    tokenized_dataset = dataset.map(tokenize_fn, batched=True, remove_columns=dataset.column_names)
 
     model = AutoModelForCausalLM.from_pretrained(
         args.model,

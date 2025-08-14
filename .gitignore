@@ -1,0 +1,12 @@
+.DS_Store
+venv/
+__pycache__/
+*.pyc
+.env
+.DS_Store
+dist/
+build/
+node_modules/
+.idea/
+package-lock.json
+.vscode/vite.config.*s.*
