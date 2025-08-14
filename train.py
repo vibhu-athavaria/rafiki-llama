@@ -9,7 +9,8 @@ from transformers import (
     Trainer,
     BitsAndBytesConfig
 )
-from peft import LoraConfig, get_peft_model
+from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
+
 
 # --- TEMP DIR FIX for RunPod ---
 os.environ["TMPDIR"] = "/tmp"
@@ -73,6 +74,9 @@ def main():
         quantization_config=bnb_config
     )
     model.config.use_cache = False  # Needed for gradient checkpointing with LoRA
+
+    # Prepare for LoRA in k-bit training
+    model = prepare_model_for_kbit_training(model)
 
     # --- LoRA config ---
     lora_config = LoraConfig(
